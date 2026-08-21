@@ -1,418 +1,242 @@
-# \# SDSS Stellar Classification and Data Analysis
+# SDSS Stellar Classification and Data Analysis
 
-# 
+This project uses data from the Sloan Digital Sky Survey (SDSS) to investigate whether stars, galaxies and quasars (QSOs) can be distinguished using their photometric and spectroscopic properties.
 
-# \## Overview
+I wanted to combine some of the programming and data analysis skills I've been developing with an astronomy problem, so the project includes exploratory analysis, SQL and machine learning.
 
-# 
+## Results
 
-# This project investigates whether photometric and spectroscopic properties can be used to distinguish between stars, galaxies and quasars (QSOs) in data from the Sloan Digital Sky Survey (SDSS).
+I trained a Random Forest classifier using the SDSS photometric measurements and calculated colour indices.
 
-# 
+The final model achieved:
 
-# The analysis combines exploratory data analysis, astronomical colour indices, redshift analysis, SQL and machine learning to investigate the differences between the three object classes.
+* 88.35% accuracy on the test set
+* 0.850 macro F1 score
+* 88.62% ± 0.27% accuracy using 5-fold cross-validation
 
-# 
+The most important feature was the r-i colour index, with a feature importance of approximately 32.7%.
 
-# \## Dataset
+I also compared using magnitudes and colours separately:
 
-# 
+| Features             | Accuracy | Macro F1 |
+| -------------------- | -------: | -------: |
+| Magnitudes only      |   86.28% |    0.824 |
+| Colours only         |   86.47% |    0.827 |
+| Magnitudes + colours |   88.35% |    0.850 |
 
-# The dataset contains \*\*100,000 observations\*\* of astronomical objects classified as:
+This suggests that the colour indices contain a lot of the information needed for classification, but combining them with the original magnitudes gives the best performance.
 
-# 
+## Dataset
 
-# \* Galaxy
+The dataset contains 100,000 astronomical objects classified as:
 
-# \* QSO (quasar)
+* Galaxy
+* QSO (quasar)
+* Star
 
-# \* Star
+The main measurements I used were the SDSS photometric magnitudes:
 
-# 
+* u
+* g
+* r
+* i
+* z
 
-# The dataset contains photometric measurements in the `u`, `g`, `r`, `i` and `z` bands, as well as positional information, redshift and object classification.
+The dataset also contains redshift, coordinates and other survey information.
 
-# 
+The class distribution is:
 
-# \## Data Cleaning
+| Class  | Number | Percentage |
+| ------ | -----: | ---------: |
+| Galaxy | 59,445 |     59.45% |
+| Star   | 21,594 |     21.59% |
+| QSO    | 18,961 |     18.96% |
 
-# 
+![Class distribution](figures/class_distribution.png)
 
-# The dataset uses `-9999` as a sentinel value for missing measurements. These values were identified and replaced with missing values before analysis.
+## Data Cleaning
 
-# 
+The dataset uses -9999 to represent missing measurements. I identified these values and replaced them with missing values before carrying out the analysis.
 
-# Photometric colour indices were calculated from the measured magnitudes:
+I also calculated four photometric colour indices:
 
-# 
+```text
+u-g
+g-r
+r-i
+i-z
+```
 
-# \* `u-g`
+These were then used alongside the original magnitudes in the later analysis.
 
-# \* `g-r`
+## Exploratory Analysis
 
-# \* `r-i`
+I started by looking at the distributions of the different photometric measurements and how they varied between the three object classes.
 
-# \* `i-z`
+### Photometric colours
 
-# 
+The colour distributions show noticeable differences between the classes.
 
-# \## Exploratory Analysis
+Galaxies generally have larger colour indices, while QSOs tend to have smaller values. Stars tend to sit between the two for several of the colour indices.
 
-# 
+![g-r distribution](figures/g_r_distribution_normalised.png)
 
-# The initial analysis investigated:
+I also plotted a colour-colour diagram to see how much the classes overlap.
 
-# 
+![Colour-colour diagram](figures/colour_colour_diagram.png)
 
-# \* Class distribution
+The diagram shows some separation between the classes, but also significant overlap. This helps explain why colour can be useful for classification without being enough to perfectly separate the objects.
 
-# \* Photometric magnitude distributions
+### Redshift
 
-# \* Colour-index distributions
+Redshift gives a much clearer distinction between the classes.
 
-# \* Colour-colour relationships
+The median redshifts are approximately:
 
-# \* Redshift distributions
+| Class  | Median redshift |
+| ------ | --------------: |
+| Star   |         -0.0001 |
+| Galaxy |          0.4563 |
+| QSO    |          1.6172 |
 
-# \* Numerical features by object class
+Stars are concentrated very close to zero redshift, while galaxies have larger redshifts and QSOs have substantially larger values.
 
-# 
+![Redshift distribution](figures/redshift_distribution_zoomed.png)
 
-# \### Class distribution
+I also found that around 79.6% of QSOs in the dataset have a redshift greater than 1, compared with around 1.5% of galaxies and 0% of stars.
 
-# 
+## SQL Analysis
 
-# The dataset is dominated by galaxies, with smaller numbers of stars and QSOs.
+I loaded the cleaned data into a SQLite database and used SQL queries to investigate some of the same patterns.
 
-# 
+The queries looked at:
 
-# !\[Class distribution](figures/class\_distribution.png)
+* The number and percentage of each object class
+* Mean redshift by class
+* The number of high-redshift objects
+* Mean colour indices
 
-# 
+I included SQL in the project because I wanted to practise working with a database rather than doing the entire analysis directly in Pandas.
 
-# \### Photometric colours
+## Machine Learning
 
-# 
+I used a Random Forest classifier to try to classify each object as a galaxy, QSO or star.
 
-# The colour indices show clear differences between the three classes. Galaxies generally have larger colour indices, while QSOs tend to have smaller values.
+The model used:
 
-# 
+```text
+u, g, r, i, z
+u-g, g-r, r-i, i-z
+```
 
-# !\[g-r distribution](figures/g\_r\_distribution\_normalised.png)
+I used an 80/20 train-test split with stratification so that the class proportions were maintained.
 
-# 
+### Classification performance
 
-# A colour-colour diagram was also used to investigate the degree of separation and overlap between the classes.
+The final model achieved 88.35% accuracy on the test set.
 
-# 
+| Class  | Precision | Recall |   F1 |
+| ------ | --------: | -----: | ---: |
+| Galaxy |      0.91 |   0.95 | 0.93 |
+| QSO    |      0.82 |   0.81 | 0.81 |
+| Star   |      0.85 |   0.76 | 0.80 |
 
-# !\[Colour-colour diagram](figures/colour\_colour\_diagram.png)
+![Confusion matrix](figures/confusion_matrix.png)
 
-# 
+The model performs particularly well for galaxies. Stars and QSOs are harder to distinguish, which is consistent with the overlap seen in the colour-colour diagram.
 
-# \### Redshift
+### Feature importance
 
-# 
+The Random Forest feature importance showed that the colour indices were particularly useful.
 
-# The redshift distributions show a strong distinction between the classes.
+| Feature | Importance |
+| ------- | ---------: |
+| r-i     |      32.7% |
+| u-g     |      14.3% |
+| g-r     |      13.0% |
+| i-z     |      11.7% |
 
-# 
+![Feature importance](figures/feature_importance.png)
 
-# Stars are concentrated around zero redshift, while galaxies have intermediate redshifts and QSOs have substantially larger redshifts.
+The r-i colour index was by far the most important individual feature in this model.
 
-# 
+### Magnitudes vs colours
 
-# !\[Redshift distribution](figures/redshift\_distribution\_zoomed.png)
+I wanted to check whether the classifier was mainly using the original magnitudes or the colour information I had calculated.
 
-# 
+I therefore trained three versions of the model:
 
-# The SQL analysis also found that approximately \*\*79.6% of QSOs\*\* have a redshift greater than 1, compared with approximately \*\*1.5% of galaxies\*\* and essentially none of the stars.
+1. Magnitudes only
+2. Colour indices only
+3. Magnitudes and colour indices together
 
-# 
+The colour-only model actually performed slightly better than the magnitude-only model:
 
-# \## SQL Analysis
+* Magnitudes: 86.28%
+* Colours: 86.47%
 
-# 
+However, combining both increased the accuracy to 88.35%.
 
-# The dataset was also loaded into a SQLite database to investigate the data using SQL.
+This suggests that the colour indices and the original magnitudes contain some complementary information.
 
-# 
+### Cross-validation
 
-# Queries were used to examine:
+The 88.35% test accuracy comes from one particular train-test split, so I also used 5-fold stratified cross-validation to check how consistent the result was.
 
-# 
+The five folds produced accuracies of:
 
-# \* Object counts and class proportions
+```text
+88.34%
+88.46%
+88.62%
+88.52%
+89.13%
+```
 
-# \* Mean redshift by class
+giving a mean accuracy of:
 
-# \* High-redshift objects
+88.62% ± 0.27%
 
-# \* Mean photometric colour indices
+The relatively small spread between the folds suggests that the model's performance is fairly stable.
 
-# 
+## What I found
 
-# This provided an additional way of analysing the dataset alongside the Python-based analysis.
+The main things I found from the analysis were:
 
-# 
+* Redshift is a strong discriminator between stars, galaxies and QSOs.
+* The three classes have noticeably different photometric colour distributions.
+* There is still significant overlap between the classes in colour-colour space.
+* Colour indices are useful for classification, with colour-only features slightly outperforming the raw magnitudes.
+* Combining magnitudes and colours gives the best classification performance.
+* r-i was the most important feature in the Random Forest model.
+* The final classifier achieved approximately 88% accuracy, with similar performance across five cross-validation folds.
 
-# \## Machine Learning
+## Files
 
-# 
+The main analysis is split between the notebooks, SQL, source code and figures folders.
 
-# A \*\*Random Forest classifier\*\* was trained to distinguish between galaxies, QSOs and stars.
+The exploratory analysis is in `notebooks/01_data_exploration.py`.
 
-# 
+The SQL queries are in `sql/01_basic_analysis.sql`.
 
-# The model used:
+The scripts in `src` contain the database setup, SQL analysis, Random Forest training, feature comparison, confusion matrix and cross-validation.
 
-# 
+The `figures` folder contains the plots generated during the analysis.
 
-# \* `u`
+## Tools
 
-# \* `g`
+* Python
+* Pandas
+* Matplotlib
+* Scikit-learn
+* SQLite / SQL
+* Git / GitHub
 
-# \* `r`
+## Future Work
 
-# \* `i`
+Some things I would like to explore further are:
 
-# \* `z`
-
-# \* `u-g`
-
-# \* `g-r`
-
-# \* `r-i`
-
-# \* `i-z`
-
-# 
-
-# The data was split into training and testing sets using a stratified 80/20 split.
-
-# 
-
-# \### Classification performance
-
-# 
-
-# The model achieved:
-
-# 
-
-# | Metric        |     Result |
-
-# | ------------- | ---------: |
-
-# | Test accuracy | \*\*88.35%\*\* |
-
-# | Macro F1      |  \*\*0.850\*\* |
-
-# | Galaxy recall |    \*\*95%\*\* |
-
-# | QSO recall    |    \*\*81%\*\* |
-
-# | Star recall   |    \*\*76%\*\* |
-
-# 
-
-# !\[Confusion matrix](figures/confusion\_matrix.png)
-
-# 
-
-# The classifier performs particularly well for galaxies, while stars and QSOs show greater overlap.
-
-# 
-
-# \### Feature importance
-
-# 
-
-# The most important feature was the `r-i` colour index.
-
-# 
-
-# | Feature | Importance |
-
-# | ------- | ---------: |
-
-# | `r-i`   |  \*\*32.7%\*\* |
-
-# | `u-g`   |  \*\*14.3%\*\* |
-
-# | `g-r`   |  \*\*13.0%\*\* |
-
-# | `i-z`   |  \*\*11.7%\*\* |
-
-# 
-
-# !\[Feature importance](figures/feature\_importance.png)
-
-# 
-
-# The results suggest that photometric colour contains substantial information for distinguishing between astronomical object classes.
-
-# 
-
-# \### Magnitudes vs colours
-
-# 
-
-# Three feature sets were compared:
-
-# 
-
-# | Features             |   Accuracy |  Macro F1 |
-
-# | -------------------- | ---------: | --------: |
-
-# | Magnitudes only      |     86.28% |     0.824 |
-
-# | Colours only         |     86.47% |     0.827 |
-
-# | Magnitudes + colours | \*\*88.35%\*\* | \*\*0.850\*\* |
-
-# 
-
-# Colour indices alone performed slightly better than the raw magnitudes, while combining both produced the best performance. This suggests that the two feature types provide complementary information.
-
-# 
-
-# \### Cross-validation
-
-# 
-
-# Five-fold stratified cross-validation was used to test the stability of the classifier.
-
-# 
-
-# The model achieved:
-
-# 
-
-# \*\*88.62% ± 0.27% accuracy\*\*
-
-# 
-
-# across the five folds, indicating that the classification performance is relatively stable across different subsets of the dataset.
-
-# 
-
-# \## Key Findings
-
-# 
-
-# The analysis found several clear differences between the three astronomical classes:
-
-# 
-
-# 1\. \*\*Redshift provides strong separation between the classes.\*\* Stars are concentrated around zero redshift, while QSOs generally have much larger redshifts.
-
-# 2\. \*\*Photometric colours are useful for classification.\*\* The colour indices show clear class-dependent distributions.
-
-# 3\. \*\*`r-i` was the most important feature\*\* in the Random Forest model, accounting for approximately 32.7% of the model's feature importance.
-
-# 4\. \*\*Combining magnitudes and colour indices improves classification performance\*\*, achieving 88.35% accuracy compared with 86.28% using magnitudes alone and 86.47% using colours alone.
-
-# 5\. \*\*Model performance was stable\*\*, with five-fold cross-validation producing 88.62% ± 0.27% accuracy.
-
-# 
-
-# \## Project Structure
-
-# 
-
-# ```text
-
-# stellar-data-analysis/
-
-# │
-
-# ├── raw/
-
-# │   ├── README.md
-
-# │   └── data\_dictionary.md
-
-# │
-
-# ├── notebooks/
-
-# │   └── 01\_data\_exploration.py
-
-# │
-
-# ├── sql/
-
-# │   └── 01\_basic\_analysis.sql
-
-# │
-
-# ├── src/
-
-# │   ├── create\_database.py
-
-# │   ├── run\_sql.py
-
-# │   ├── train\_classifier.py
-
-# │   ├── compare\_features.py
-
-# │   ├── confusion\_matrix.py
-
-# │   └── cross\_validation.py
-
-# │
-
-# ├── figures/
-
-# │   ├── class\_distribution.png
-
-# │   ├── u\_band\_distribution.png
-
-# │   ├── g\_r\_distribution\_normalised.png
-
-# │   ├── colour\_colour\_diagram.png
-
-# │   ├── redshift\_by\_class.png
-
-# │   ├── redshift\_distribution\_zoomed.png
-
-# │   ├── confusion\_matrix.png
-
-# │   └── feature\_importance.png
-
-# │
-
-# └── README.md
-
-# ```
-
-# 
-
-# \## Tools
-
-# 
-
-# \* Python
-
-# \* Pandas
-
-# \* Matplotlib
-
-# \* Scikit-learn
-
-# \* SQLite / SQL
-
-# \* Git / GitHub
-
-# 
-
-# \## Future Work
-
-# 
-
-# Possible extensions include testing additional classification methods, investigating the physical interpretation of the most informative colour indices, and exploring whether incorporating additional SDSS features can improve classification performance.
-
-
-
+* Comparing the Random Forest with other classification algorithms
+* Looking more closely at why particular colour indices are useful
+* Investigating additional SDSS features
+* Seeing whether the classification accuracy can be improved while keeping the model interpretable
